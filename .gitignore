@@ -1,0 +1,33 @@
+# Local books and converted output
+ebooks/
+*.epub
+*.kepub
+*.mobi
+*.azw
+*.azw3
+*.pdf
+
+# Python environments, bytecode, and build output
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Test and tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local secrets and system files
+.env
+.env.*
+*.log
+.DS_Store
+Thumbs.db
