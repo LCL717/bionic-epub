@@ -300,3 +300,9 @@ MVP 完成的判断标准：
 - Outputs: `dist/bionic-epub.exe`, portable ZIP with README, and SHA-256 checksums. Generated files and ebooks remain ignored by Git.
 - Verified all 6 tests plus frozen EXE help, preview, conversion, basic validation, unchanged input, and refusal to overwrite existing output.
 - No GUI added. Rendering on Kobo remains a manual check.
+
+## Batch CLI (2026-09-28)
+
+- Added `batch-convert` and `batch-validate` for multiple files/directories, optional recursive scans, deduplication, per-file results and final exit status.
+- Output collisions and input replacement are blocked. Existing outputs survive failed batch conversions. Output folders are excluded from scans.
+- Added regression coverage and frozen EXE batch smoke checks.

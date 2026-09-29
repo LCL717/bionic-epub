@@ -46,6 +46,10 @@ def main():
         run(exe, "preview", "The quick brown fox", cwd=temp, env=env)
         run(exe, "convert", source, "-o", output, cwd=temp, env=env)
         run(exe, "validate", output, cwd=temp, env=env)
+        batch_out = temp / "batch output"
+        run(exe, "batch-convert", source, "-o", batch_out, cwd=temp, env=env)
+        run(exe, "batch-validate", batch_out, cwd=temp, env=env)
+        assert (batch_out / "sample book-bionic.epub").exists()
         with zipfile.ZipFile(output) as archive:
             assert b"<strong>The</strong>" in archive.read("OEBPS/chapter.xhtml")
         assert source.read_bytes() == before

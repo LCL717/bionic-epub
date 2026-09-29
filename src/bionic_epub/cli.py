@@ -6,6 +6,9 @@ from pathlib import Path
 from io import StringIO
 import shutil
 import sys
+import os
+import tempfile
+from collections import Counter
 
 from rich import box
 
@@ -18,6 +21,7 @@ import typer
 
 from .epub_io import EpubError, convert_epub, validate_epub
 from .tokenizer import bold_prefix
+from .batch import discover
 
 class CommandHelp(typer.core.TyperGroup):
     def format_help(self, ctx, formatter) -> None:
@@ -38,6 +42,8 @@ class CommandHelp(typer.core.TyperGroup):
         commands.add_column(ratio=1, overflow="fold")
         for template, description in [
             ("convert <file> -o <output>", "Convert an EPUB into a new EPUB."),
+            ("batch-convert <paths> -o <dir>", "Convert EPUB files or folders."),
+            ("batch-validate <paths>", "Validate EPUB files or folders."),
             ("validate <file>", "Check basic EPUB archive structure."),
             ('preview "<text>"', "Preview bold word prefixes."),
         ]:
@@ -109,6 +115,86 @@ def preview(
         transformed, _ = bold_prefix(token, strength)
         output.append(transformed)
     typer.echo(" ".join(output))
+
+
+def batch_summary(succeeded: int, failed: int):
+    typer.echo(f"Summary: {succeeded} succeeded, {failed} failed")
+    if failed:
+        raise typer.Exit(1)
+
+
+@app.command("batch-validate")
+def batch_validate(
+    inputs: list[str] = typer.Argument(..., help="One or more EPUB files or directories."),
+    recursive: bool = typer.Option(False, "--recursive", "-r", help="Include subdirectories."),
+):
+    """Validate each EPUB; continue after errors and report a summary."""
+    files, errors = discover(inputs, recursive)
+    succeeded = 0
+    for path, detail in errors:
+        typer.echo(f"FAIL {path}: {detail}", err=True)
+    failed = len(errors)
+    for source in files:
+        try:
+            validate_epub(source)
+            typer.echo(f"OK {source}")
+            succeeded += 1
+        except Exception as error:
+            typer.echo(f"FAIL {source}: {error}", err=True)
+            failed += 1
+    batch_summary(succeeded, failed)
+
+
+@app.command("batch-convert")
+def batch_convert(
+    inputs: list[str] = typer.Argument(..., help="One or more EPUB files or directories."),
+    output: Path = typer.Option(..., "--output", "-o", help="Destination directory; files use <name>-bionic.epub."),
+    recursive: bool = typer.Option(False, "--recursive", "-r", help="Include subdirectories; output directory is excluded from scans."),
+    strength: str = typer.Option("standard", help="light, standard, or strong"),
+    ratio: float | None = typer.Option(None, min=0.01, max=1.0),
+    process_headings: bool = typer.Option(False),
+    process_toc: bool = typer.Option(False),
+    overwrite: bool = typer.Option(False, help="Replace existing output files, never input files."),
+):
+    """Convert each EPUB into the output folder; continue after individual failures."""
+    if strength not in {"light", "standard", "strong"}:
+        raise typer.BadParameter("strength must be light, standard, or strong")
+    files, errors = discover(inputs, recursive, output)
+    targets = [output / f"{source.stem}-bionic.epub" for source in files]
+    counts = Counter(str(target.resolve()).casefold() for target in targets)
+    sources = {str(source.resolve()).casefold() for source in files}
+    for path, detail in errors:
+        typer.echo(f"FAIL {path}: {detail}", err=True)
+    succeeded, failed = 0, len(errors)
+    for source, target in zip(files, targets):
+        try:
+            key = str(target.resolve()).casefold()
+            if counts[key] > 1:
+                raise EpubError("Multiple input files map to the same output name")
+            if key in sources:
+                raise EpubError("Output would replace an input file")
+            if target.exists() and not overwrite:
+                raise EpubError("Output already exists; use --overwrite to replace it")
+            output.mkdir(parents=True, exist_ok=True)
+            # Build beside the destination. A failed conversion leaves old output intact.
+            with tempfile.TemporaryDirectory(prefix=".bionic-", dir=output) as temporary:
+                staged = Path(temporary) / "result.epub"
+                documents, words = convert_epub(source, staged, strength=strength, ratio=ratio,
+                    process_headings=process_headings, process_toc=process_toc)
+                if overwrite:
+                    os.replace(staged, target)
+                else:
+                    # Windows rename refuses an existing destination.
+                    if os.name == "nt":
+                        os.rename(staged, target)
+                    else:
+                        os.link(staged, target)
+            typer.echo(f"OK {source} -> {target} ({documents} documents, {words} words)")
+            succeeded += 1
+        except Exception as error:
+            typer.echo(f"FAIL {source}: {error}", err=True)
+            failed += 1
+    batch_summary(succeeded, failed)
 
 
 if __name__ == "__main__":

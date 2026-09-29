@@ -97,3 +97,16 @@ For example:
 `validate` checks basic EPUB archive structure, not rendering on every device. Open the converted book in a reader, then transfer it to Kobo and check text, chapters, and navigation.
 
 When working from the project folder, use `.\dist\bionic-epub.exe` for the packaged program, or `.\.venv\Scripts\bionic-epub.exe` to run the installed source version. The arguments are the same.
+
+Batch conversion and validation accept multiple files, directories, or a mixture:
+
+```powershell
+.\bionic-epub.exe batch-convert "book1.epub" "book2.epub" -o "converted"
+.\bionic-epub.exe batch-convert "books" -o "converted"
+.\bionic-epub.exe batch-validate "book1.epub" "book2.epub"
+.\bionic-epub.exe batch-validate "converted"
+```
+
+Add `--recursive` / `-r` to include subfolders. Folder scans select `.epub` files and deduplicate repeated paths. Conversion excludes its output folder from scans; use a different folder from the input. Each result is named `<original-name>-bionic.epub` in the output directory (subfolder structure is not preserved). Inputs with conflicting output names are reported as failures rather than overwritten.
+
+Batch conversion supports the same `--strength`, `--ratio`, `--process-headings`, `--process-toc`, and `--overwrite` settings as single-file conversion. Failed conversions preserve existing outputs. Each file reports OK or FAIL; processing continues after individual failures. The final summary lists successes and failures. Any failure, missing input, or empty folder produces a nonzero exit code.
