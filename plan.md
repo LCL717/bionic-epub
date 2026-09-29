@@ -293,3 +293,10 @@ MVP 完成的判断标准：
 ## 12. 设计结论
 
 项目的核心产品是可靠的 EPUB 转换引擎，CLI 是第一版最合适的交互方式。UI 不作为核心依赖，而作为未来对预览和参数调节的补充。因此应先把命令行、转换算法和 Kobo 兼容性做好，再根据实际使用频率决定是否增加 UI。
+
+## Portable CLI packaging (2026-09-26)
+
+- Added `build.cmd`: prepare the virtual environment, install packaging dependencies, run tests, build a single-file Windows console EXE, and smoke-test it.
+- Outputs: `dist/bionic-epub.exe`, portable ZIP with README, and SHA-256 checksums. Generated files and ebooks remain ignored by Git.
+- Verified all 6 tests plus frozen EXE help, preview, conversion, basic validation, unchanged input, and refusal to overwrite existing output.
+- No GUI added. Rendering on Kobo remains a manual check.

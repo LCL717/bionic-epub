@@ -11,12 +11,14 @@ requires-python = ">=3.10"
 dependencies = [
     "lxml>=5.0",
     "typer>=0.12",
+    "rich>=13.8",
 ]
 
 [project.optional-dependencies]
 test = [
     "pytest>=8.0",
 ]
+build = ["pyinstaller>=6.16,<7"]
 
 [project.scripts]
 bionic-epub = "bionic_epub.cli:app"
